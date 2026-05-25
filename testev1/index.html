@@ -36,6 +36,12 @@
         border-radius: 5px;
         cursor: pointer;
         font-weight: bold;
+        background-color: #3f51b5;
+        color: white;
+    }
+    
+    button:hover {
+        background-color: #5c6bc0;
     }
 </style>
 </head>
@@ -53,299 +59,204 @@
     Mouse → mover câmera<br>
     Scroll → zoom<br><br>
 
-    <button onclick="embaralhar()">
+    <button onclick="window.embaralhar()">
         Embaralhar
     </button>
 </div>
 
-<script type="module">
-
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js';
-
-import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/controls/OrbitControls.js';
-
-////////////////////////////////////////////////////
-// CENA
-////////////////////////////////////////////////////
-
-const scene = new THREE.Scene();
-
-const camera = new THREE.PerspectiveCamera(
-    45,
-    window.innerWidth / window.innerHeight,
-    0.1,
-    1000
-);
-
-camera.position.set(7, 7, 7);
-
-////////////////////////////////////////////////////
-// RENDERER
-////////////////////////////////////////////////////
-
-const renderer = new THREE.WebGLRenderer({
-    antialias: true
-});
-
-renderer.setSize(
-    window.innerWidth,
-    window.innerHeight
-);
-
-renderer.setClearColor(0x111111);
-
-document.body.appendChild(renderer.domElement);
-
-////////////////////////////////////////////////////
-// CONTROLES
-////////////////////////////////////////////////////
-
-const controls = new OrbitControls(
-    camera,
-    renderer.domElement
-);
-
-controls.enableDamping = true;
-
-////////////////////////////////////////////////////
-// LUZ
-////////////////////////////////////////////////////
-
-const luz = new THREE.DirectionalLight(0xffffff, 2);
-
-luz.position.set(10, 10, 10);
-
-scene.add(luz);
-
-scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-
-////////////////////////////////////////////////////
-// CUBO MÁGICO
-////////////////////////////////////////////////////
-
-const cubos = [];
-
-const TAM = 0.98;
-
-function criarCubinho(x, y, z) {
-
-    const geometry = new THREE.BoxGeometry(
-        TAM,
-        TAM,
-        TAM
-    );
-
-    const materiais = [
-
-        // direita
-        new THREE.MeshPhongMaterial({
-            color: x === 1 ? 0xff0000 : 0x222222
-        }),
-
-        // esquerda
-        new THREE.MeshPhongMaterial({
-            color: x === -1 ? 0xff8800 : 0x222222
-        }),
-
-        // topo
-        new THREE.MeshPhongMaterial({
-            color: y === 1 ? 0xffff00 : 0x222222
-        }),
-
-        // baixo
-        new THREE.MeshPhongMaterial({
-            color: y === -1 ? 0xffffff : 0x222222
-        }),
-
-        // frente
-        new THREE.MeshPhongMaterial({
-            color: z === 1 ? 0x00ff00 : 0x222222
-        }),
-
-        // trás
-        new THREE.MeshPhongMaterial({
-            color: z === -1 ? 0x0000ff : 0x222222
-        })
-
-    ];
-
-    const cubo = new THREE.Mesh(
-        geometry,
-        materiais
-    );
-
-    cubo.position.set(x, y, z);
-
-    scene.add(cubo);
-
-    cubos.push(cubo);
-}
-
-for (let x = -1; x <= 1; x++) {
-    for (let y = -1; y <= 1; y++) {
-        for (let z = -1; z <= 1; z++) {
-
-            criarCubinho(x, y, z);
-
-        }
+<script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.165.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.165.0/examples/jsm/"
+      }
     }
-}
-
-////////////////////////////////////////////////////
-// ANIMAÇÃO DAS FACES
-////////////////////////////////////////////////////
-
-let animando = false;
-
-function girarFace(eixo, camada, sentido = 1) {
-
-    if (animando) return;
-
-    animando = true;
-
-    const grupo = new THREE.Group();
-
-    scene.add(grupo);
-
-    const selecionados = cubos.filter(c => {
-
-        return Math.round(c.position[eixo]) === camada;
-
-    });
-
-    selecionados.forEach(c => grupo.add(c));
-
-    let angulo = 0;
-
-    function animar() {
-
-        requestAnimationFrame(animar);
-
-        const passo = 0.08 * sentido;
-
-        grupo.rotation[eixo] += passo;
-
-        angulo += Math.abs(passo);
-
-        if (angulo >= Math.PI / 2) {
-
-            grupo.rotation[eixo] =
-                Math.sign(sentido) * Math.PI / 2;
-
-            grupo.updateMatrixWorld();
-
-            selecionados.forEach(c => {
-
-                c.applyMatrix4(grupo.matrix);
-
-                scene.add(c);
-
-                c.position.x = Math.round(c.position.x);
-                c.position.y = Math.round(c.position.y);
-                c.position.z = Math.round(c.position.z);
-
-            });
-
-            scene.remove(grupo);
-
-            animando = false;
-
-            return;
-        }
-    }
-
-    animar();
-}
-
-////////////////////////////////////////////////////
-// TECLADO
-////////////////////////////////////////////////////
-
-document.addEventListener("keydown", (e) => {
-
-    switch (e.key.toLowerCase()) {
-
-        case "u":
-            girarFace("y", 1, 1);
-            break;
-
-        case "f":
-            girarFace("z", 1, 1);
-            break;
-    }
-});
-
-////////////////////////////////////////////////////
-// EMBARALHAR
-////////////////////////////////////////////////////
-
-window.embaralhar = function() {
-
-    const movimentos = [
-
-        () => girarFace("y", 1, 1),
-        () => girarFace("y", 1, -1),
-
-        () => girarFace("z", 1, 1),
-        () => girarFace("z", 1, -1)
-
-    ];
-
-    let contador = 0;
-
-    const intervalo = setInterval(() => {
-
-        if (animando) return;
-
-        movimentos[
-            Math.floor(Math.random() * movimentos.length)
-        ]();
-
-        contador++;
-
-        if (contador >= 10) {
-
-            clearInterval(intervalo);
-
-        }
-
-    }, 700);
-};
-
-////////////////////////////////////////////////////
-// RESPONSIVIDADE
-////////////////////////////////////////////////////
-
-window.addEventListener("resize", () => {
-
-    camera.aspect =
-        window.innerWidth / window.innerHeight;
-
-    camera.updateProjectionMatrix();
-
-    renderer.setSize(
-        window.innerWidth,
-        window.innerHeight
-    );
-
-});
-
-////////////////////////////////////////////////////
-// LOOP
-////////////////////////////////////////////////////
-
-function animate() {
-
-    requestAnimationFrame(animate);
-
-    controls.update();
-
-    renderer.render(scene, camera);
-}
-
-animate();
-
-</script>
+  </script>
+  
+  <script type="module">
+  // Agora as importações ficam limpas e conversam entre si sem dar erro de rota!
+  import * as THREE from 'three';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+  
+  ////////////////////////////////////////////////////
+  // CENA E CÂMERA
+  ////////////////////////////////////////////////////
+  
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(
+      45,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000
+  );
+  camera.position.set(6, 6, 6);
+  
+  ////////////////////////////////////////////////////
+  // RENDERER
+  ////////////////////////////////////////////////////
+  
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x111111);
+  document.body.appendChild(renderer.domElement);
+  
+  ////////////////////////////////////////////////////
+  // CONTROLES E LUZ
+  ////////////////////////////////////////////////////
+  
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  
+  ////////////////////////////////////////////////////
+  // CRIAÇÃO DO CUBO MÁGICO (Usando Material Básico para garantir)
+  ////////////////////////////////////////////////////
+  
+  const cubos = [];
+  const TAM = 0.95;
+  
+  function criarCubinho(x, y, z) {
+      const geometry = new THREE.BoxGeometry(TAM, TAM, TAM);
+  
+      const materiais = [
+          // direita (X+) -> Vermelho
+          new THREE.MeshBasicMaterial({ color: x === 1 ? 0xff0000 : 0x000000 }),
+          // esquerda (X-) -> Laranja
+          new THREE.MeshBasicMaterial({ color: x === -1 ? 0xff8800 : 0x000000 }),
+          // topo (Y+) -> Amarelo
+          new THREE.MeshBasicMaterial({ color: y === 1 ? 0xffff00 : 0x000000 }),
+          // baixo (Y-) -> Branco
+          new THREE.MeshBasicMaterial({ color: y === -1 ? 0xffffff : 0x000000 }),
+          // frente (Z+) -> Verde
+          new THREE.MeshBasicMaterial({ color: z === 1 ? 0x00ff00 : 0x000000 }),
+          // trás (Z-) -> Azul
+          new THREE.MeshBasicMaterial({ color: z === -1 ? 0x0000ff : 0x000000 })
+      ];
+  
+      const cubo = new THREE.Mesh(geometry, materiais);
+      cubo.position.set(x, y, z);
+      scene.add(cubo);
+      cubos.push(cubo);
+  }
+  
+  for (let x = -1; x <= 1; x++) {
+      for (let y = -1; y <= 1; y++) {
+          for (let z = -1; z <= 1; z++) {
+              criarCubinho(x, y, z);
+          }
+      }
+  }
+  
+  ////////////////////////////////////////////////////
+  // SISTEMA DE ANIMAÇÃO DE FACES
+  ////////////////////////////////////////////////////
+  
+  let animando = false;
+  
+  function girarFace(eixo, camada, sentido = 1) {
+      if (animando) return;
+      animando = true;
+  
+      const grupo = new THREE.Group();
+      scene.add(grupo);
+  
+      const selecionados = cubos.filter(c => Math.round(c.position[eixo]) === camada);
+      selecionados.forEach(c => grupo.add(c));
+  
+      let anguloAcumulado = 0;
+      const velocidade = 0.08 * sentido;
+      const alvo = Math.PI / 2;
+  
+      function rodarGiro() {
+          grupo.rotation[eixo] += velocidade;
+          anguloAcumulado += Math.abs(velocidade);
+  
+          if (anguloAcumulado >= alvo) {
+              const diferenca = anguloAcumulado - alvo;
+              grupo.rotation[eixo] -= diferenca * sentido;
+              grupo.updateMatrixWorld();
+  
+              selecionados.forEach(c => {
+                  c.applyMatrix4(grupo.matrix);
+                  scene.add(c);
+                  
+                  c.position.x = Math.round(c.position.x);
+                  c.position.y = Math.round(c.position.y);
+                  c.position.z = Math.round(c.position.z);
+              });
+  
+              scene.remove(grupo);
+              animando = false;
+          } else {
+              requestAnimationFrame(rodarGiro);
+          }
+      }
+  
+      rodarGiro();
+  }
+  
+  ////////////////////////////////////////////////////
+  // MAPEAMENTO DO TECLADO
+  ////////////////////////////////////////////////////
+  
+  document.addEventListener("keydown", (e) => {
+      switch (e.key.toLowerCase()) {
+          case "u":
+              girarFace("y", 1, -1);
+              break;
+          case "f":
+              girarFace("z", 1, -1);
+              break;
+      }
+  });
+  
+  ////////////////////////////////////////////////////
+  // FUNÇÃO EMBARALHAR (GLOBAL)
+  ////////////////////////////////////////////////////
+  
+  window.embaralhar = function() {
+      const movimentos = [
+          () => girarFace("y", 1, 1),
+          () => girarFace("y", 1, -1),
+          () => girarFace("z", 1, 1),
+          () => girarFace("z", 1, -1)
+      ];
+  
+      let contador = 0;
+      const intervalo = setInterval(() => {
+          if (animando) return;
+  
+          movimentos[Math.floor(Math.random() * movimentos.length)]();
+          contador++;
+  
+          if (contador >= 10) {
+              clearInterval(intervalo);
+          }
+      }, 400);
+  };
+  
+  ////////////////////////////////////////////////////
+  // RESPONSIVIDADE
+  ////////////////////////////////////////////////////
+  
+  window.addEventListener("resize", () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+  
+  ////////////////////////////////////////////////////
+  // LOOP PRINCIPAL DE RENDERIZAÇÃO
+  ////////////////////////////////////////////////////
+  
+  function loopPrincipal() {
+      requestAnimationFrame(loopPrincipal);
+      controls.update();
+      renderer.render(scene, camera);
+  }
+  
+  loopPrincipal();
+  
+  </script>
 
 </body>
 </html>
